@@ -56,7 +56,6 @@ function RestaurantList() {
       const openTime = new Date(now).setHours(h1, m1, 0);
       const closeTime = new Date(now).setHours(h2, m2, 0);
       return now >= openTime && now <= closeTime;
-    // eslint-disable-next-line no-unused-vars
     } catch (e) {
       console.error("Invalid time format:", firstOrder, lastOrder);
       return false;
