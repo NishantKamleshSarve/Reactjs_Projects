@@ -1,66 +1,117 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
-export default function RestaurantDetails() {
-  const [data, setData] = useState(null);
+function RestaurantDetail() {
+  const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchRestaurant = async () => {
-      try {
-        const res = await fetch("http://localhost:3000/api/restaurant-details");
-        const json = await res.json();
-        console.log("Data received:", json);
-        if (Array.isArray(json) && json.length > 0) {
-          setData(json[0]);
-        }
-      } catch (err) {
-        console.error("Fetch error:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchRestaurants = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/api/home", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          deviceId: "321312364633",
+          latitude: "321312364633",
+          longitude: "321312364633",
+          location: "Frankfurt",
+          user: "123456",
+          email: "devkpandey@gmail.com",
+          zipcode: "61348",
+          sorting: "",
+          country: "",
+        }),
+      });
 
-    fetchRestaurant();
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const rawData = await response.json();
+      const data = Array.isArray(rawData) ? rawData[0] : rawData;
+
+      if (data?.Restaurants && Array.isArray(data.Restaurants)) {
+        setRestaurants(data.Restaurants);
+      } else {
+        console.error("No restaurants found or bad data structure:", data);
+      }
+    } catch (error) {
+      console.error("Fetch failed:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRestaurants();
   }, []);
 
-  if (loading) return <div className="p-4 text-center">Loading...</div>;
-  if (!data) return <div className="p-4 text-center">No data available.</div>;
+  const isOpenNow = () => {
+    const now = new Date();
+    const hour = now.getHours();
+    return hour >= 10 && hour < 22; // Adjust as needed
+  };
 
-  const restaurant = data.Restaurant_Detail?.[0];
-  const owner = data.Owner?.[0];
-  const menu = data.MenuItem?.MenuHead || [];
+  if (loading) return <p className="text-center mt-10 text-lg">Loading...</p>;
+
+  if (restaurants.length === 0)
+    return <p className="text-center text-red-600 mt-10">No restaurants available.</p>;
 
   return (
-    <div className="max-w-5xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-4">{restaurant?.name || "Restaurant"}</h1>
-      <p className="text-gray-700 mb-2"><strong>Address:</strong> {restaurant?.address}</p>
-      <p className="text-gray-700 mb-2"><strong>Cuisine:</strong> {restaurant?.cuisine}</p>
+    <div className="p-6 space-y-6 flex flex-col items-center">
+      {restaurants.map((rest) => (
+        <div
+          key={rest.restroid || rest.id || rest.name}
+          className="bg-white shadow-md rounded-xl overflow-hidden flex w-full max-w-4xl border"
+        >
+          {/* Image */}
+          <img
+            src={rest.image || "/fallback.jpg"}
+            alt={rest.name || "Restaurant"}
+            className="w-44 h-44 object-cover rounded-l-xl"
+          />
 
-      {owner && (
-        <div className="my-6">
-          <h2 className="text-2xl font-semibold mb-2">Owner Details</h2>
-          <p><strong>Name:</strong> {owner.Name}</p>
-          <p><strong>Email:</strong> {owner.Email}</p>
-          <p><strong>Phone:</strong> {owner.Phone}</p>
-        </div>
-      )}
+          {/* Content */}
+          <div className="flex-1 p-4 flex flex-col justify-between">
+            <div>
+              <div className="flex justify-between items-start">
+                <h2 className="text-lg font-semibold text-green-800">
+                  {rest.name || "Unnamed"}
+                </h2>
+                <span className="flex items-center text-green-600 font-semibold text-sm">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 mr-1 text-green-500"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M12 17.27L18.18 21 16.54 13.97 22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24 7.45 13.97 5.82 21z" />
+                  </svg>
+                  {rest.rating || "8.9"}
+                </span>
+              </div>
+              <p className="text-sm text-gray-600 mt-1">{rest.cuisine || "Cuisine N/A"}</p>
+              <p className="text-sm text-gray-700 mt-1">
+                {rest.address || "Address N/A"}
+              </p>
+            </div>
 
-      <h2 className="text-2xl font-semibold mb-4">Menu</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {menu.map((item, index) => (
-          <div key={index} className="p-4 border rounded shadow">
-            <img
-              src={item.image || "https://via.placeholder.com/150"}
-              alt={item.name}
-              className="w-full h-40 object-cover rounded mb-2"
-              onError={(e) => (e.target.src = "https://via.placeholder.com/150")}
-            />
-            <h3 className="text-lg font-bold">{item.name}</h3>
-            <p className="text-gray-600 text-sm">{item.description}</p>
-            <p className="mt-2 text-green-600 font-semibold">{parseFloat(item.price).toFixed(2)} €</p>
+            {/* Open/Closed badge */}
+            <div className="mt-3">
+              <span
+                className={`inline-block px-3 py-1 text-sm rounded font-medium ${
+                  isOpenNow() ? "bg-green-600 text-white" : "bg-red-500 text-white"
+                }`}
+              >
+                {isOpenNow() ? "Open" : "Closed"}
+              </span>
+            </div>
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
   );
 }
+
+export default RestaurantDetail;
